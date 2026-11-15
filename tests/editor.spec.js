@@ -99,6 +99,22 @@ test('switches to slide canvas, adds slides and applies PPT layout commands', as
   expect(bounds.frame.right).toBeLessThanOrEqual(bounds.canvas.right)
   expect(bounds.frame.top).toBeGreaterThanOrEqual(bounds.canvas.top)
   expect(bounds.frame.bottom).toBeLessThanOrEqual(bounds.canvas.bottom)
+  const fittedZoom = await page.evaluate(() => window.__dshVisualEditor.Canvas.getZoom())
+  await page.locator('#zoom-in').click()
+  expect(await page.evaluate(() => window.__dshVisualEditor.Canvas.getZoom())).toBe(Math.min(200, fittedZoom + 10))
+  await page.locator('#fit-canvas').click()
+  expect(await page.evaluate(() => window.__dshVisualEditor.Canvas.getZoom())).toBe(fittedZoom)
+  await page.setViewportSize({ width: 1000, height: 800 })
+  await page.waitForTimeout(250)
+  const resized = await page.evaluate(() => ({
+    canvas: document.querySelector('.canvas-area').getBoundingClientRect().toJSON(),
+    frame: document.querySelector('.gjs-frame').getBoundingClientRect().toJSON(),
+  }))
+  expect(resized.frame.right).toBeLessThanOrEqual(resized.canvas.right)
+  expect(resized.frame.bottom).toBeLessThanOrEqual(resized.canvas.bottom)
+  await page.setViewportSize({ width: 650, height: 800 })
+  await expect(page.locator('.right-panel')).toBeHidden()
+  await page.setViewportSize({ width: 1440, height: 950 })
   await page.evaluate(() => {
     const editor = window.__dshVisualEditor
     editor.select(editor.getWrapper().find('h1')[0])

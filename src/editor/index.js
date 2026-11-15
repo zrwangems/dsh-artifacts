@@ -13,6 +13,7 @@ let dirty = false
 let saving = false
 let editor
 let presentation = false
+let fitMode = true
 let activeSlide = 0
 let currentRevision = ''
 let lastSelectedId = ''
@@ -278,17 +279,34 @@ function activateSlide(index) {
   })
 }
 
-function fitCanvas() {
-  if (!editor || !presentation) return
+function centerCanvas() {
   const area = $('.canvas-area')
-  const zoom = Math.min(90, (area.clientWidth - 32) / 13.76, (area.clientHeight - 32) / 8.16)
-  editor.Canvas.setZoom(Math.max(20, Math.floor(zoom)))
   editor.Canvas.setCoords(0, 0)
   editor.Canvas.getFrame()?.set({ x: (area.clientWidth - 1376) / 2, y: (area.clientHeight - 816) / 2 })
 }
 
+function fitCanvas() {
+  if (!editor || !presentation) return
+  fitMode = true
+  const area = $('.canvas-area')
+  const zoom = Math.min(200, (area.clientWidth - 32) / 13.76, (area.clientHeight - 64) / 8.16)
+  editor.Canvas.setZoom(Math.max(15, Math.floor(zoom)))
+  centerCanvas()
+  $('#zoom-value').textContent = `${editor.Canvas.getZoom()}%`
+}
+
+function setCanvasZoom(value) {
+  if (!editor || !presentation) return
+  fitMode = false
+  editor.Canvas.setZoom(Math.max(15, Math.min(200, Math.round(value))))
+  centerCanvas()
+  $('#zoom-value').textContent = `${editor.Canvas.getZoom()}%`
+}
+
 function setPresentation(value) {
   presentation = value
+  fitMode = true
+  $('#canvas-status').hidden = !value
   $('#mode-slides').classList.toggle('active', value)
   $('#mode-page').classList.toggle('active', !value)
   document.querySelectorAll('.device').forEach(button => { button.hidden = value })
@@ -307,7 +325,7 @@ function setPresentation(value) {
   ` : ''
   activateSlide(activeSlide)
   if (value) { editor.setDevice('artifact-slide'); requestAnimationFrame(fitCanvas) }
-  else { editor.setDevice('desktop'); editor.Canvas.setZoom(100); editor.Canvas.setCoords(0, 0); editor.Canvas.getFrame()?.set({ x: 0, y: 0 }) }
+  else { editor.setDevice('desktop'); editor.Canvas.setZoom(100); editor.Canvas.setCoords(0, 0); editor.Canvas.getFrame()?.set({ x: 0, y: 0 }); $('#zoom-value').textContent = '100%' }
 }
 
 function addSlide() {
@@ -440,7 +458,7 @@ async function initialize() {
   const slides = slideComponents()
   if (slides.length > 1 || source.querySelector('.slides, .slide, [data-slide]')) setPresentation(true)
   else activateSlide(0)
-  const resizeObserver = new ResizeObserver(() => { if (presentation) requestAnimationFrame(fitCanvas) })
+  const resizeObserver = new ResizeObserver(() => { if (presentation && fitMode) requestAnimationFrame(fitCanvas) })
   resizeObserver.observe($('.canvas-area'))
   window.addEventListener('pagehide', () => resizeObserver.disconnect(), { once: true })
   status('双击改文字，拖拽移动，手柄缩放；选中后可在侧栏底部指挥 Agent', 5000)
@@ -468,6 +486,9 @@ $('#send-back').addEventListener('click', () => layer(-1))
 $('#align-left').addEventListener('click', () => align('left'))
 $('#align-center').addEventListener('click', () => align('center'))
 $('#add-slide').addEventListener('click', addSlide)
+$('#fit-canvas').addEventListener('click', fitCanvas)
+$('#zoom-out').addEventListener('click', () => setCanvasZoom(editor.Canvas.getZoom() - 10))
+$('#zoom-in').addEventListener('click', () => setCanvasZoom(editor.Canvas.getZoom() + 10))
 $('#mode-page').addEventListener('click', () => setPresentation(false))
 $('#mode-slides').addEventListener('click', () => { setPresentation(true); document.querySelector('[data-left="slides"]').click() })
 $('#desktop').addEventListener('click', () => editor?.setDevice('desktop'))
@@ -508,6 +529,9 @@ window.addEventListener('keydown', event => {
   }
   if (event.key === 'Delete' && selected && !['INPUT', 'TEXTAREA'].includes(event.target.tagName) && !event.target.isContentEditable) { selected.remove(); selectionChanged(null); return }
   if (!(event.ctrlKey || event.metaKey)) return
+  if (event.key === '0' && presentation) { event.preventDefault(); fitCanvas(); return }
+  if ((event.key === '-' || event.key === '_') && presentation) { event.preventDefault(); setCanvasZoom(editor.Canvas.getZoom() - 10); return }
+  if ((event.key === '+' || event.key === '=') && presentation) { event.preventDefault(); setCanvasZoom(editor.Canvas.getZoom() + 10); return }
   if (event.key.toLowerCase() === 's') { event.preventDefault(); save() }
   if (event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? editor?.UndoManager.redo() : editor?.UndoManager.undo() }
   if (event.key.toLowerCase() === 'd' && selected) { event.preventDefault(); $('#duplicate-element').click() }
