@@ -16,6 +16,31 @@ dsh plugin --profile web add -w ./zrwangems-dsh-artifacts-0.0.0.tgz
 
 重开 DSH Web，进入目标会话，在右侧栏选择 **Artifacts**。从文件列表打开 Agent 刚生成的 `.html/.htm`，也可以输入项目内相对路径。点击文件资源时，本插件也能认领 HTML 侧栏预览。
 
+## 导入 PPTX 模板
+
+把 `.pptx` 放进当前项目目录，在顶部输入相对路径（例如 `templates/ITRC.pptx`），点击 **导入 PPTX**。插件会生成同名 HTML 并直接打开，输出为原生 `.slides > section[data-slide]`、1280×720 自由布局，不带另一套网页工具栏。
+
+普通文字框和插图会成为独立元素，可在插件里改文字、拖拽、缩放、调整层级和交给 Agent 修改。母版装饰、复杂自由形状及 EMF 图形先在本机高保真渲染，避免普通文本提取造成跑版；图片会按 PPT 的裁剪参数还原。
+
+PPTX 导入额外需要本机 Python 3、LibreOffice Impress/Draw 和 Python 包。HTML 编辑本身仍不需要 Python：
+
+```bash
+python3 -m pip install -r scripts/requirements-pptx.txt
+# Ubuntu / Debian：sudo apt-get install libreoffice-impress libreoffice-draw
+# CentOS / RHEL / Fedora：sudo yum install libreoffice-impress libreoffice-draw
+# macOS：brew install --cask libreoffice
+```
+
+也可用 `DSH_ARTIFACTS_PYTHON` 指定 Python 可执行文件。转换完全在本机进行，不上传模板。只支持 `.pptx`，旧版 `.ppt` 请先另存为 `.pptx`。目标 HTML 默认不与已有文件冲突，API 只有显式传 `overwrite: true` 才允许覆盖。
+
+也可脱离插件直接运行：
+
+```bash
+python3 scripts/pptx_to_artifacts.py input.pptx output.html
+```
+
+复杂母版装饰作为页面底图保留，普通文本框与图片可编辑。SmartArt、图表、动画、切换效果及嵌入对象不保证能变成独立可编辑 HTML 对象。
+
 ## 编辑
 
 - 双击文字直接输入；拖拽移动，使用手柄缩放。
@@ -23,6 +48,7 @@ dsh plugin --profile web add -w ./zrwangems-dsh-artifacts-0.0.0.tgz
 - 工具栏支持复制、上移/下移层级、左对齐和水平居中。
 - 左侧插入文本、图片、音视频、SVG 图案、LaTeX 公式和布局；右侧修改样式及媒体属性。
 - 普通网页支持桌面、平板、手机宽度。幻灯片模式自动识别 `.slide`、`[data-slide]`、`.slides > section` 和顶层 `section`，提供页面导航、新建页面和 1280×720（16:9）单页画布。工作区会随 DSH Desktop / Web 侧栏的实际宽高自动适配，支持手动缩放、Ctrl/Cmd + 0 适应窗口。
+- PPTX 模板导入：保留页面尺寸、文本样式、图片裁剪和元素层级，生成插件原生可编辑 HTML-PPT。
 - 撤销/重做、无脚本编辑画布、独立交互预览、Ctrl/Cmd + S 保存。
 
 编辑画布不会执行原 HTML 脚本；预览会在没有同源权限的 sandbox 中执行。原 `<head>`、样式和脚本会保存回文件。
@@ -54,10 +80,10 @@ npx playwright install chromium  # 首次
 npm run test:browser
 ```
 
-`dist/` 和 `lib/client.js` 会包含在 npm 包中，GrapesJS 与 KaTeX 全部本地打包，运行时不依赖 CDN 或 Python。
+`dist/` 和 `lib/client.js` 会包含在 npm 包中，GrapesJS 与 KaTeX 全部本地打包，HTML 编辑运行时不依赖 CDN 或 Python。只有主动使用 PPTX 导入时才需要上述本地转换依赖。
 
 ## 范围
 
-自由布局适合绝对定位的 HTML-PPT；普通文档流 HTML 仍保留 GrapesJS 的拖放和样式编辑语义。当前不提供动画时间轴、多人同时编辑或 Markdown 反解。Windows/Desktop 使用相同 Host 与浏览器 API，但本仓库的实机验收记录以 Linux DSH Web 为准。
+自由布局适合绝对定位的 HTML-PPT；普通文档流 HTML 仍保留 GrapesJS 的拖放和样式编辑语义。当前不提供动画时间轴、多人同时编辑、Markdown 反解或 HTML 反向导出 PPTX。Windows/Desktop 使用相同 Host 与浏览器 API，但本仓库的实机验收记录以 Linux DSH Web 为准。
 
 许可证：MIT。第三方许可见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。

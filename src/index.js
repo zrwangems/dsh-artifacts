@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { spawn } from 'node:child_process'
 import { createReadStream } from 'node:fs'
 import { mkdir, readFile, readdir, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
@@ -14,6 +15,8 @@ const MAX_MEDIA_BYTES = 128 * 1024 * 1024
 const MAX_FILES = 500
 const MAX_HISTORY = 20
 const MAX_DOCUMENTS = 128
+const MAX_PPTX_BYTES = 128 * 1024 * 1024
+const PPTX_CONVERT_TIMEOUT = 180_000
 const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git', '.dsh', 'dist', 'build', 'coverage'])
 const TYPES = {
   '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -139,7 +142,7 @@ async function listHtml(root, current = root, output = []) {
     if (entry.name.startsWith('.') || SKIPPED_DIRECTORIES.has(entry.name)) continue
     const path = resolve(current, entry.name)
     if (entry.isDirectory()) await listHtml(root, path, output)
-    else if (entry.isFile() && /\.html?$/i.test(entry.name)) output.push({ path, name: path.slice(root.length + 1) })
+    else if (entry.isFile() && /\.(?:html?|pptx)$/i.test(entry.name)) output.push({ path, name: path.slice(root.length + 1) })
   }
   return output
 }
@@ -198,6 +201,54 @@ export function apply(ctx) {
     return { ok: true, token, path: canonical, cwd, url: `${PREFIX}/editor?token=${encodeURIComponent(token)}` }
   }
 
+  async function importPptx(sessionId, requestedPath, requestedOutput, overwrite = false) {
+    const cwd = sessionCwd(ctx, sessionId)
+    const source = ownedPath({ cwd }, resolve(cwd, requestedPath || ''))
+    if (!/\.pptx$/i.test(source)) throw new Error('只支持 .pptx 文件；请先将旧版 .ppt 另存为 .pptx')
+    const canonicalSource = await safeRealpath(source)
+    if (!isWithin(cwd, canonicalSource)) throw new Error('PPTX 符号链接指向项目目录之外')
+    const info = await stat(canonicalSource)
+    if (!info.isFile() || info.size > MAX_PPTX_BYTES) throw new Error('PPTX 不存在、不是普通文件或超过 128 MiB')
+    const output = ownedPath({ cwd }, requestedOutput ? resolve(cwd, requestedOutput) : canonicalSource.replace(/\.pptx$/i, '.html'))
+    if (!/\.html?$/i.test(output)) throw new Error('输出文件必须使用 .html 或 .htm 后缀')
+    if (output === canonicalSource) throw new Error('输出文件不能覆盖源 PPTX')
+    const canonicalParent = await safeRealpath(dirname(output))
+    if (!isWithin(cwd, canonicalParent)) throw new Error('输出目录指向项目目录之外')
+    if (!overwrite) {
+      try { await stat(output); throw new Error('目标 HTML 已存在，请更换输出路径或明确允许覆盖') } catch (cause) { if (cause.code !== 'ENOENT') throw cause }
+    } else {
+      try {
+        const canonicalOutput = await safeRealpath(output)
+        if (!isWithin(cwd, canonicalOutput)) throw new Error('输出文件符号链接指向项目目录之外')
+      } catch (cause) { if (cause.code !== 'ENOENT') throw cause }
+    }
+    await serialized(output, async () => {
+      const python = process.env.DSH_ARTIFACTS_PYTHON || (process.platform === 'win32' ? 'python' : 'python3')
+      const script = resolve(ROOT, 'scripts/pptx_to_artifacts.py')
+      await new Promise((resolvePromise, reject) => {
+        const child = spawn(python, [script, canonicalSource, output, ...(overwrite ? ['--overwrite'] : [])], { shell: false, windowsHide: true })
+        let stdout = ''
+        let stderr = ''
+        const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('PPTX 转换超过 180 秒，已停止')) }, PPTX_CONVERT_TIMEOUT)
+        child.stdout.on('data', chunk => { stdout = (stdout + chunk).slice(-65536) })
+        child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-65536) })
+        child.on('error', cause => { clearTimeout(timer); reject(new Error(`无法启动 Python：${cause.message}。请安装 Python 3、LibreOffice 及 scripts/requirements-pptx.txt 中的依赖`)) })
+        child.on('close', code => {
+          clearTimeout(timer)
+          if (code !== 0) return reject(new Error(`PPTX 转换失败：${stderr.trim() || stdout.trim() || `退出码 ${code}`}`))
+          resolvePromise()
+        })
+      })
+      const resultInfo = await stat(output)
+      if (resultInfo.size > MAX_HTML_BYTES) {
+        await unlink(output).catch(() => {})
+        throw new Error('转换结果超过 16 MiB，请压缩 PPT 中的图片后重试')
+      }
+    })
+    const opened = await open(sessionId, relative(cwd, output))
+    return { ...opened, converted: true, source: canonicalSource }
+  }
+
   const handler = async (req, res) => {
     const url = new URL(req.url || '/', 'http://dsh.local')
     const path = url.pathname
@@ -213,6 +264,12 @@ export function apply(ctx) {
         if (req.method !== 'POST') return error(res, 405, 'method not allowed')
         const input = await body(req, 64 * 1024)
         json(res, 200, await open(String(input.sessionId || ''), String(input.path || '')))
+        return
+      }
+      if (path === `${PREFIX}/api/import-pptx`) {
+        if (req.method !== 'POST') return error(res, 405, 'method not allowed')
+        const input = await body(req, 64 * 1024)
+        json(res, 200, await importPptx(String(input.sessionId || ''), String(input.path || ''), input.outputPath ? String(input.outputPath) : '', input.overwrite === true))
         return
       }
       if (path === `${PREFIX}/api/document`) {

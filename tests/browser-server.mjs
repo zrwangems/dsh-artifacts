@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises'
+import { spawnSync } from 'node:child_process'
 import { startFixtureHost } from './host.mjs'
 
 const cwd = new URL('./workspace/', import.meta.url).pathname
@@ -13,6 +14,8 @@ await writeFile(`${cwd}/index.html`, `<!doctype html>
 <span class="dsh-formula" data-latex="a^2+b^2=c^2" data-display="false"><span class="katex"><math><semantics><annotation encoding="application/x-tex">a^2+b^2=c^2</annotation></semantics></math></span></span>
 </main><script>document.body.dataset.scriptRan = 'yes'</script></body></html>`)
 await writeFile(`${cwd}/images/pixel.svg`, '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="blue"/></svg>')
+// Optional PPTX fixture: browser test skips when local converter dependencies are absent.
+spawnSync(process.env.DSH_ARTIFACTS_PYTHON || 'python3', [new URL('../scripts/pptx_to_artifacts.py', import.meta.url).pathname, new URL('./fixtures/ITRC-template.pptx', import.meta.url).pathname, `${cwd}/ITRC-native.html`, '--overwrite'], { stdio: 'ignore', timeout: 180_000 })
 const host = await startFixtureHost(cwd, 43189)
 console.log(`Fixture host: ${host.origin}`)
 process.on('SIGTERM', async () => { await host.close(); process.exit(0) })

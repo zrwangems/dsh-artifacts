@@ -16,6 +16,7 @@
     "plugin",
     "html",
     "html-ppt",
+    "pptx",
     "artifacts",
     "agent",
     "visual-editor",
@@ -56,7 +57,10 @@
     "dsh.plugin.json",
     "README.md",
     "LICENSE",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "scripts/pptx_html_common.py",
+    "scripts/pptx_to_artifacts.py",
+    "scripts/requirements-pptx.txt"
   ],
   "engines": {
     "node": ">=20"

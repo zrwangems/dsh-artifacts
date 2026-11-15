@@ -59,7 +59,8 @@
       if (!target.trim()) return
       setLoading(true); setError(''); setSelection(null)
       try {
-        const value = await request('/api/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId: props.sessionId, path: target }) })
+        const importing = /\.pptx$/i.test(target.trim())
+        const value = await request(importing ? '/api/import-pptx' : '/api/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId: props.sessionId, path: target }) })
         setCurrent(value); setPath(value.path); setNonce(value => value + 1)
       } catch (cause) { setError(cause.message) } finally { setLoading(false) }
     }, [props.sessionId])
@@ -100,14 +101,14 @@
 
     return h('div', { className: 'dsa' },
       h('div', { className: 'dsa-toolbar' },
-        h('input', { className: 'dsa-input', value: path, placeholder: '项目内 HTML 路径，例如 slides/index.html', 'aria-label': 'HTML 文件路径', spellCheck: false, onChange: event => setPath(event.target.value), onKeyDown: event => { if (event.key === 'Enter') open(path) } }),
-        h('button', { className: 'dsa-button dsa-primary', disabled: loading || !path.trim(), onClick: () => open(path) }, loading ? '打开中…' : '打开'),
+        h('input', { className: 'dsa-input', value: path, placeholder: '项目内 HTML / PPTX 路径，例如 slides/index.html', 'aria-label': 'HTML 或 PPTX 文件路径', spellCheck: false, onChange: event => setPath(event.target.value), onKeyDown: event => { if (event.key === 'Enter') open(path) } }),
+        h('button', { className: 'dsa-button dsa-primary', disabled: loading || !path.trim(), onClick: () => open(path) }, loading ? (/\.pptx$/i.test(path.trim()) ? '转换中…' : '打开中…') : (/\.pptx$/i.test(path.trim()) ? '导入 PPTX' : '打开')),
         current ? h('button', { className: 'dsa-button', title: '返回文件列表', onClick: () => { setCurrent(null); setSelection(null); loadFiles() } }, '文件') : null),
       error ? h('div', { className: 'dsa-error', role: 'alert' }, error) : null,
       current ? h('iframe', { key: `${current.token}:${nonce}`, className: 'dsa-frame', src: current.url, title: `编辑 ${basename(current.path)}` }) :
         h('div', { className: 'dsa-home' }, h('h2', { className: 'dsa-title' }, 'HTML / HTML-PPT Artifacts'),
-          h('p', { className: 'dsa-description' }, '在侧栏直接改文字、拖拽元素、缩放任一对象，也可以选中元素后让 Agent 精确修改。'),
-          h('div', { className: 'dsa-files' }, files.length ? files.map(file => h('button', { key: file.path, className: 'dsa-file', title: file.path, onClick: () => open(file.path) }, h('span', { className: 'dsa-file-icon' }, '◇'), h('span', { className: 'dsa-file-name' }, file.name))) : h('div', { className: 'dsa-empty' }, '项目中还没有 HTML 文件。', h('br'), '先让 Agent 创建 HTML 或 HTML-PPT，再回来刷新。')),
+          h('p', { className: 'dsa-description' }, '打开 HTML，或输入项目内 PPTX 路径直接导入。转换后可改文字、拖拽图片、缩放元素，也可以选中元素让 Agent 精确修改。'),
+          h('div', { className: 'dsa-files' }, files.length ? files.map(file => h('button', { key: file.path, className: 'dsa-file', title: file.path, onClick: () => open(file.path) }, h('span', { className: 'dsa-file-icon' }, '◇'), h('span', { className: 'dsa-file-name' }, file.name))) : h('div', { className: 'dsa-empty' }, '项目中还没有 HTML / PPTX 文件。', h('br'), '先让 Agent 创建 HTML，或把 PPTX 模板放进项目目录。')),
           h('button', { className: 'dsa-button', onClick: loadFiles }, '刷新文件列表')),
       current ? h('section', { className: 'dsa-agent', 'aria-label': '选中元素 Agent 指令' },
         h('div', { className: 'dsa-agent-label' }, h('span', '交给 Agent'), h('span', { className: 'dsa-selection', title: selection?.selector || '' }, selection ? `已选 ${selection.selector}` : '未选元素（整份文件）')),

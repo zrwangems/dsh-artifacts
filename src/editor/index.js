@@ -323,9 +323,12 @@ function setPresentation(value) {
     body.dsh-artifact-presenting .dsh-artifact-active-slide{display:block!important;position:absolute!important;left:48px;top:48px;margin:0!important}
     body.dsh-artifact-presenting .dsh-artifact-active-slide *{max-width:100%}
   ` : ''
-  activateSlide(activeSlide)
-  if (value) { editor.setDevice('artifact-slide'); requestAnimationFrame(fitCanvas) }
-  else { editor.setDevice('desktop'); editor.Canvas.setZoom(100); editor.Canvas.setCoords(0, 0); editor.Canvas.getFrame()?.set({ x: 0, y: 0 }); $('#zoom-value').textContent = '100%' }
+  if (value) {
+    editor.setDevice('artifact-slide')
+    requestAnimationFrame(() => { activateSlide(activeSlide); fitCanvas() })
+  } else {
+    activateSlide(activeSlide)
+    editor.setDevice('desktop'); editor.Canvas.setZoom(100); editor.Canvas.setCoords(0, 0); editor.Canvas.getFrame()?.set({ x: 0, y: 0 }); $('#zoom-value').textContent = '100%' }
 }
 
 function addSlide() {
@@ -436,6 +439,7 @@ async function initialize() {
   })
   addTypes(editor)
   addBlocks(editor)
+  editor.once('load', () => { if (presentation) activateSlide(activeSlide) })
   const sectorNames = { general: '布局', flex: '弹性布局', dimension: '尺寸与位置', typography: '文字', decorations: '外观', extra: '其他' }
   editor.I18n.addMessages({ en: { styleManager: { sectors: sectorNames } } })
   editor.StyleManager.getSectors().each(sector => sector.set('name', sectorNames[sector.getId()] || sector.get('name')))

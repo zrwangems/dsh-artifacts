@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 
-async function openEditor(page) {
-  const response = await page.request.post('/dsh-artifacts/api/open', { data: { sessionId: 'session-1', path: 'index.html' } })
+async function openEditor(page, path = 'index.html') {
+  const response = await page.request.post('/dsh-artifacts/api/open', { data: { sessionId: 'session-1', path } })
   expect(response.ok()).toBeTruthy()
   const opened = await response.json()
   await page.goto(opened.url)
@@ -131,6 +132,39 @@ test('switches to slide canvas, adds slides and applies PPT layout commands', as
   await page.locator('#mode-page').click()
   const pageMode = await page.evaluate(() => ({ zoom: window.__dshVisualEditor.Canvas.getZoom(), x: window.__dshVisualEditor.Canvas.getFrame().get('x') }))
   expect(pageMode).toEqual({ zoom: 100, x: 0 })
+})
+
+test('opens imported ITRC PPTX as editable native slides and saves text and image changes', async ({ page }) => {
+  test.skip(!existsSync(new URL('./workspace/ITRC-native.html', import.meta.url)), 'requires PPTX converter dependencies')
+  const errors = []
+  page.on('pageerror', error => errors.push(error.message))
+  await openEditor(page, 'ITRC-native.html')
+  await page.locator('[data-left="slides"]').click()
+  await expect(page.locator('.slide-card')).toHaveCount(6)
+  const counts = await page.evaluate(() => ({
+    texts: window.__dshVisualEditor.getWrapper().find('[data-ppt-role="text"]').length,
+    pictures: window.__dshVisualEditor.getWrapper().find('[data-ppt-role="picture"]').length,
+    slides: window.__dshVisualEditor.getWrapper().find('[data-slide]').length,
+  }))
+  expect(counts).toEqual({ texts: 31, pictures: 13, slides: 6 })
+  await page.evaluate(() => {
+    const editor = window.__dshVisualEditor
+    const title = editor.getWrapper().find('[data-ppt-role="text"]').at(0)
+    title.components('插件内编辑标题')
+    editor.select(title)
+  })
+  await page.locator('#align-center').click()
+  await page.evaluate(() => {
+    const editor = window.__dshVisualEditor
+    editor.select(editor.getWrapper().find('[data-ppt-role="picture"]').at(0))
+  })
+  await page.locator('#bring-front').click()
+  await page.locator('#save').click()
+  await expect(page.locator('#dirty')).toBeHidden()
+  const html = await readFile(new URL('./workspace/ITRC-native.html', import.meta.url), 'utf8')
+  expect(html).toContain('插件内编辑标题')
+  expect((html.match(/data-slide/g) || []).length).toBeGreaterThanOrEqual(6)
+  expect(errors).toEqual([])
 })
 
 test('previews unsaved changes and returns to the same editor state', async ({ page }) => {

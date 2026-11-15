@@ -54,5 +54,7 @@ state/
 **/Thumbs.db
 desktop.ini
 
-# 浏览器测试会重建此文件
-tests/workspace/index.html
+# 测试会重建这些文件
+tests/workspace/*.html
+__pycache__/
+*.py[cod]
