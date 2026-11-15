@@ -1,0 +1,55 @@
+# ── 依赖 ───────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.yarn/
+.pnp.*
+*.tsbuildinfo
+
+# ── 构建产物 ───────────────────────────────────────────
+dist/
+build/
+out/
+lib/
+*.tgz
+
+# ── 测试与覆盖率 ───────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# ── 环境与密钥 ─────────────────────────────────────────
+**/.env
+**/.env.*
+!**/.env.example
+.npmrc
+*.pem
+*.key
+*.p12
+credentials*.json
+secrets*.json
+
+# ── 日志与临时文件 ─────────────────────────────────────
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*~
+
+# ── 开发过程文件与本地运行态 ───────────────────────────
+AgentsDo/
+.dsh/
+.dsh-home/
+.dsh-test/
+state/
+*.local.json
+
+# ── 编辑器与系统 ───────────────────────────────────────
+.vscode/
+.idea/
+**/.DS_Store
+**/Thumbs.db
+desktop.ini
