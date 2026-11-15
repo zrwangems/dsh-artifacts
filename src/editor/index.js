@@ -252,10 +252,21 @@ function activateSlide(index) {
   const slides = slideComponents()
   if (!slides.length) return
   activeSlide = Math.max(0, Math.min(index, slides.length - 1))
+  const canvasBody = editor.Canvas.getDocument().body
+  canvasBody.querySelectorAll('.dsh-artifact-mode-hidden').forEach(element => element.classList.remove('dsh-artifact-mode-hidden'))
+  ;[...canvasBody.children].forEach(element => element.classList.remove('dsh-artifact-slide-root'))
   slides.forEach((slide, position) => {
     const element = slide.getEl()
     if (element) element.classList.toggle('dsh-artifact-active-slide', presentation && position === activeSlide)
   })
+  let root = slides[activeSlide].getEl()
+  let branch = root
+  while (presentation && branch?.parentElement && branch.parentElement !== canvasBody) {
+    ;[...branch.parentElement.children].forEach(sibling => { if (sibling !== branch) sibling.classList.add('dsh-artifact-mode-hidden') })
+    branch = branch.parentElement
+  }
+  while (root && root.parentElement !== canvasBody) root = root.parentElement
+  if (root && presentation) root.classList.add('dsh-artifact-slide-root')
   $('#slide-list').innerHTML = ''
   slides.forEach((slide, position) => {
     const button = document.createElement('button')
@@ -265,7 +276,15 @@ function activateSlide(index) {
     button.onclick = () => activateSlide(position)
     $('#slide-list').appendChild(button)
   })
-  if (presentation) slides[activeSlide].getEl()?.scrollIntoView({ block: 'center', inline: 'center' })
+}
+
+function fitCanvas() {
+  if (!editor || !presentation) return
+  const area = $('.canvas-area')
+  const zoom = Math.min(90, (area.clientWidth - 32) / 13.76, (area.clientHeight - 32) / 8.16)
+  editor.Canvas.setZoom(Math.max(20, Math.floor(zoom)))
+  editor.Canvas.setCoords(0, 0)
+  editor.Canvas.getFrame()?.set({ x: (area.clientWidth - 1376) / 2, y: (area.clientHeight - 816) / 2 })
 }
 
 function setPresentation(value) {
@@ -280,12 +299,15 @@ function setPresentation(value) {
   if (!style) { style = canvasDocument.createElement('style'); style.id = 'dsh-artifact-canvas-mode'; canvasDocument.head.appendChild(style) }
   style.textContent = value ? `
     body.dsh-artifact-presenting{margin:0;background:#dfe3ea;min-width:100%;min-height:100%;padding:48px!important;overflow:auto}
+    body.dsh-artifact-presenting>:not(.dsh-artifact-slide-root){display:none!important}
     body.dsh-artifact-presenting .slide,body.dsh-artifact-presenting [data-slide],body.dsh-artifact-presenting .slides>section,body.dsh-artifact-presenting>section{display:none!important;position:relative;width:1280px;height:720px;margin:0 auto;background:white;overflow:hidden;box-shadow:0 8px 32px #27314833}
-    body.dsh-artifact-presenting .dsh-artifact-active-slide{display:block!important}
+    body.dsh-artifact-presenting .dsh-artifact-mode-hidden{display:none!important}
+    body.dsh-artifact-presenting .dsh-artifact-active-slide{display:block!important;position:absolute!important;left:48px;top:48px;margin:0!important}
     body.dsh-artifact-presenting .dsh-artifact-active-slide *{max-width:100%}
   ` : ''
   activateSlide(activeSlide)
-  editor.Canvas.setZoom(value ? 65 : 100)
+  if (value) { editor.setDevice('artifact-slide'); requestAnimationFrame(fitCanvas) }
+  else { editor.setDevice('desktop'); editor.Canvas.setZoom(100); editor.Canvas.setCoords(0, 0); editor.Canvas.getFrame()?.set({ x: 0, y: 0 }) }
 }
 
 function addSlide() {
@@ -387,6 +409,7 @@ async function initialize() {
     traitManager: { appendTo: '#traits' }, styleManager: { appendTo: '#styles' },
     deviceManager: { devices: [
       { id: 'desktop', name: 'Desktop', width: '' },
+      { id: 'artifact-slide', name: 'Slide', width: '1376px', height: '816px' },
       { id: 'tablet', name: 'Tablet', width: '768px', widthMedia: '900px' },
       { id: 'mobile', name: 'Mobile', width: '390px', widthMedia: '480px' },
     ] },
@@ -395,6 +418,10 @@ async function initialize() {
   })
   addTypes(editor)
   addBlocks(editor)
+  const sectorNames = { general: '布局', flex: '弹性布局', dimension: '尺寸与位置', typography: '文字', decorations: '外观', extra: '其他' }
+  editor.I18n.addMessages({ en: { styleManager: { sectors: sectorNames } } })
+  editor.StyleManager.getSectors().each(sector => sector.set('name', sectorNames[sector.getId()] || sector.get('name')))
+  editor.StyleManager.render()
   window.__dshVisualEditor = editor
 
   const inlineCss = rewriteCssUrls([...source.head.querySelectorAll('style')].map(style => style.media ? `@media ${style.media} {\n${style.textContent}\n}` : style.textContent).join('\n'))
@@ -413,6 +440,9 @@ async function initialize() {
   const slides = slideComponents()
   if (slides.length > 1 || source.querySelector('.slides, .slide, [data-slide]')) setPresentation(true)
   else activateSlide(0)
+  const resizeObserver = new ResizeObserver(() => { if (presentation) requestAnimationFrame(fitCanvas) })
+  resizeObserver.observe($('.canvas-area'))
+  window.addEventListener('pagehide', () => resizeObserver.disconnect(), { once: true })
   status('双击改文字，拖拽移动，手柄缩放；选中后可在侧栏底部指挥 Agent', 5000)
 }
 

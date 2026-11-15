@@ -91,6 +91,14 @@ test('switches to slide canvas, adds slides and applies PPT layout commands', as
   await page.locator('#add-slide').click()
   await page.locator('#add-slide').click()
   await expect(page.locator('.slide-card')).toHaveCount(2)
+  const bounds = await page.evaluate(() => ({
+    canvas: document.querySelector('.canvas-area').getBoundingClientRect().toJSON(),
+    frame: document.querySelector('.gjs-frame').getBoundingClientRect().toJSON(),
+  }))
+  expect(bounds.frame.left).toBeGreaterThanOrEqual(bounds.canvas.left)
+  expect(bounds.frame.right).toBeLessThanOrEqual(bounds.canvas.right)
+  expect(bounds.frame.top).toBeGreaterThanOrEqual(bounds.canvas.top)
+  expect(bounds.frame.bottom).toBeLessThanOrEqual(bounds.canvas.bottom)
   await page.evaluate(() => {
     const editor = window.__dshVisualEditor
     editor.select(editor.getWrapper().find('h1')[0])
@@ -104,6 +112,9 @@ test('switches to slide canvas, adds slides and applies PPT layout commands', as
   await expect(page.locator('#dirty')).toBeHidden()
   const html = await readFile(new URL('./workspace/index.html', import.meta.url), 'utf8')
   expect((html.match(/data-slide/g) || []).length).toBe(2)
+  await page.locator('#mode-page').click()
+  const pageMode = await page.evaluate(() => ({ zoom: window.__dshVisualEditor.Canvas.getZoom(), x: window.__dshVisualEditor.Canvas.getFrame().get('x') }))
+  expect(pageMode).toEqual({ zoom: 100, x: 0 })
 })
 
 test('previews unsaved changes and returns to the same editor state', async ({ page }) => {

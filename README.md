@@ -11,7 +11,7 @@ git clone https://github.com/zrwangems/dsh-artifacts.git
 cd dsh-artifacts
 npm ci --include=dev
 npm pack
-dsh plugin --profile web add -w ./zrwangems-dsh-artifacts-0.2.0.tgz
+dsh plugin --profile web add -w ./zrwangems-dsh-artifacts-0.2.1.tgz
 ```
 
 重开 DSH Web，进入目标会话，在右侧栏选择 **Artifacts**。从文件列表打开 Agent 刚生成的 `.html/.htm`，也可以输入项目内相对路径。点击文件资源时，本插件也能认领 HTML 侧栏预览。
