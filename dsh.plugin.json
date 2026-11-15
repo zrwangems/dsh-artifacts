@@ -1,0 +1,16 @@
+{
+  "id": "@zrwangems/dsh-artifacts",
+  "version": "0.2.0",
+  "main": "./src/index.js",
+  "description": "在 DSH 右侧栏以 PPT 手感编辑 HTML / HTML-PPT，选中元素交给 Agent，支持安全保存与历史恢复。",
+  "engines": {
+    "dsh": ">=0.2.0"
+  },
+  "contributes": {
+    "tools": [],
+    "skills": []
+  },
+  "client": {
+    "main": "./lib/client.js"
+  }
+}

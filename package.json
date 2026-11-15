@@ -1,0 +1,64 @@
+{
+  "name": "@zrwangems/dsh-artifacts",
+  "version": "0.2.0",
+  "description": "HTML and HTML-PPT Artifacts workspace for the DeepSeek Harness",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "playwright test",
+    "pack": "npm pack"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "html",
+    "html-ppt",
+    "artifacts",
+    "agent",
+    "visual-editor",
+    "grapesjs",
+    "katex"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "esbuild": "^0.28.2",
+    "grapesjs": "0.23.9",
+    "katex": "0.19.1"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ]
+    }
+  },
+  "files": [
+    "src",
+    "lib/client.js",
+    "dist",
+    "cordis.patch.yml",
+    "dsh.plugin.json",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -53,3 +53,6 @@ state/
 **/.DS_Store
 **/Thumbs.db
 desktop.ini
+
+# 浏览器测试会重建此文件
+tests/workspace/index.html

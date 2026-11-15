@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DSH Artifacts</title>
+  <link rel="stylesheet" href="/dsh-artifacts/assets/editor.css">
+</head>
+<body>
+  <div id="app" data-token="__TOKEN__">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">A</span><span id="file-name">Artifacts</span><span id="dirty" hidden>未保存</span></div>
+      <div class="toolbar" role="toolbar" aria-label="编辑工具">
+        <button id="undo" title="撤销 Ctrl/Cmd+Z" aria-label="撤销">↶</button><button id="redo" title="重做 Ctrl/Cmd+Shift+Z" aria-label="重做">↷</button>
+        <span class="separator"></span><button id="mode-page" class="active" title="普通网页画布">网页</button><button id="mode-slides" title="幻灯片画布">幻灯片</button>
+        <button id="desktop" class="active device" title="桌面画布">桌面</button><button id="tablet" class="device" title="平板画布">平板</button><button id="mobile" class="device" title="手机画布">手机</button>
+        <span class="separator"></span><button id="preview">预览</button><button id="save" class="primary">保存</button>
+      </div>
+    </header>
+    <div id="status" role="status">正在读取 HTML…</div>
+    <main class="workspace">
+      <aside class="left-panel panel">
+        <div class="panel-tabs"><button class="active" data-left="blocks">组件</button><button data-left="layers">图层</button><button data-left="slides">页面</button></div>
+        <div id="blocks" class="panel-content"></div><div id="layers" class="panel-content" hidden></div>
+        <div id="slides" class="panel-content" hidden><button id="add-slide" class="wide">＋ 新建幻灯片</button><div id="slide-list"></div></div>
+      </aside>
+      <section class="canvas-area">
+        <div id="selection-bar" hidden>
+          <span id="selection-name"></span><button id="duplicate-element" title="复制元素">复制</button><button id="bring-front" title="上移一层">上层</button><button id="send-back" title="下移一层">下层</button>
+          <button id="align-left" title="左对齐">⇤</button><button id="align-center" title="水平居中">↔</button><button id="edit-formula" hidden>公式</button><button id="upload-media" hidden>媒体</button><button id="delete-element" title="删除元素">删除</button>
+        </div><input id="media-file" type="file" hidden>
+        <div id="gjs"></div>
+      </section>
+      <aside class="right-panel panel">
+        <div class="panel-tabs"><button class="active" data-right="styles">样式</button><button data-right="traits">属性</button><button data-right="history">版本</button></div>
+        <div id="styles" class="panel-content"></div><div id="traits" class="panel-content" hidden></div>
+        <div id="history" class="panel-content" hidden><p class="hint">每次保存前自动保留版本，最多 20 个。恢复前会保留当前磁盘版本。</p><div id="version-list"></div></div>
+      </aside>
+    </main>
+    <div id="preview-modal" class="modal" hidden><div class="preview-shell"><div class="modal-bar"><strong>交互预览</strong><span>预览不会保存修改</span><button id="close-preview">返回编辑</button></div><iframe id="preview-frame" title="HTML 交互预览" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></div></div>
+    <dialog id="formula-dialog"><form method="dialog" id="formula-form"><h2>编辑公式</h2><label for="latex">LaTeX</label><textarea id="latex" rows="6" spellcheck="false" placeholder="E = mc^2"></textarea><div id="formula-error" class="error"></div><div class="dialog-actions"><button value="cancel">取消</button><button id="apply-formula" class="primary" value="default">应用</button></div></form></dialog>
+  </div>
+  <script src="/dsh-artifacts/assets/editor.js"></script>
+</body>
+</html>
